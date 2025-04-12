@@ -149,8 +149,13 @@ class MainWindow(QMainWindow):
                     fingertips = fingertips_list[0]
                     self.finger_tracker.update_from_fingertips(fingertips)
                     
+                    palm_size = self.hand_tracker.get_palm_size(frame, results.multi_hand_landmarks[0])
+                    
+                    # print palm size
+                    print(f"Palm size: {palm_size:.2f} pixels")
+                    
                     # Detect gestures with dedicated detector
-                    gestures = self.gesture_detector.detect_gestures(fingertips)
+                    gestures = self.gesture_detector.detect_gestures(fingertips, palm_size)
                     
                     # Add gesture visualization to frame
                     processed_frame = self.gesture_detector.draw_gesture_feedback(

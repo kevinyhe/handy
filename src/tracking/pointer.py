@@ -91,6 +91,7 @@ class PointerTracker:
             'thumb': Pointer('thumb'),
             'index': Pointer('index'),
             'middle': Pointer('middle'),
+            'avg_middle': Pointer('avg_middle'),
             'ring': Pointer('ring'),
             'pinky': Pointer('pinky')
         }
@@ -197,24 +198,3 @@ class PointerTracker:
         self.frame_dimensions = frame_dimensions
         if screen_dimensions:
             self.screen_dimensions = screen_dimensions
-    
-    def detect_gestures(self):
-        """Detect common hand gestures based on finger positions.
-        
-        Returns:
-            dict: Detected gestures {gesture_name: confidence, ...}
-        """
-        gestures = {}
-        
-        # Detect pinch (thumb and index finger close together)
-        thumb_pos = self.fingers['thumb'].position
-        index_pos = self.fingers['index'].position
-        distance = np.sqrt((thumb_pos[0] - index_pos[0])**2 + 
-                          (thumb_pos[1] - index_pos[1])**2)
-        
-        if distance < 50:  # Threshold for pinch detection
-            gestures['pinch'] = 1.0 - (distance / 50.0)  # Confidence
-        
-        # Additional gestures can be implemented here
-        
-        return gestures

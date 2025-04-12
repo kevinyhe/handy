@@ -4,7 +4,7 @@ import mediapipe as mp
 class HandTracker:
     """Handles hand detection and tracking using MediaPipe."""
     
-    def __init__(self, static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5,
+    def __init__(self, static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5,
                  min_tracking_confidence=0.5):
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
@@ -40,6 +40,23 @@ class HandTracker:
                     self._highlight_hand(frame, hand_landmarks)
         
         return frame, results
+    
+    def get_palm_size(self, frame, hand_landmarks):
+        """Calculate the palm size based on hand landmarks."""
+        h, w, c = frame.shape
+        
+        # Get palm landmark coordinates (landmark 0 is wrist)
+        wrist = hand_landmarks.landmark[0]
+        thumb_cmc = hand_landmarks.landmark[1]
+        index_finger_mcp = hand_landmarks.landmark[5]   
+        
+        pinky_mcp = hand_landmarks.landmark[17]
+
+        palm_width = abs(((thumb_cmc.x - pinky_mcp.x) ** 2 + (thumb_cmc.y - pinky_mcp.y) ** 2) ** 0.5 * w)
+        palm_height = abs(((wrist.x - index_finger_mcp.x) ** 2 + (wrist.y - index_finger_mcp.y) ** 2) ** 0.5 * h)
+
+        palm_size = (palm_width + palm_height) / 2  # Average of width and height
+        return palm_size
     
     def _highlight_hand(self, frame, hand_landmarks):
         """Draw a highlight around the detected hand."""
@@ -90,6 +107,7 @@ class HandTracker:
             'thumb': 4,
             'index': 8,
             'middle': 12,
+            'avg_middle': 11,
             'ring': 16,
             'pinky': 20
         }
@@ -118,6 +136,7 @@ class HandTracker:
             'thumb': (255, 0, 0),    # Blue
             'index': (0, 255, 0),    # Green
             'middle': (0, 0, 255),   # Red
+            'avg_middle': (125, 0, 255),   # Red
             'ring': (255, 0, 255),   # Magenta
             'pinky': (0, 255, 255)   # Yellow
         }
@@ -129,11 +148,11 @@ class HandTracker:
             # Draw circle outline
             cv2.circle(frame, position, 8, (255, 255, 255), 2)
             
-            # Add label text
-            cv2.putText(frame, finger_name, 
-                    (position[0]-10, position[1]-10), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, 
-                    colors[finger_name], 2)
+            # # Add label text
+            # cv2.putText(frame, finger_name, 
+            #         (position[0]-10, position[1]-10), 
+            #         cv2.FONT_HERSHEY_SIMPLEX, 0.5, 
+            #         colors[finger_name], 2)
                     
         return frame
 

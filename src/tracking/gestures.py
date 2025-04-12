@@ -6,27 +6,28 @@ from threading import Lock
 class GestureDetector:
     """Detects and classifies hand gestures from finger positions."""
     
+    
+    
     def __init__(self):
         """Initialize the gesture detector."""
         # Gesture configuration parameters
         self.config = {
             'left_click': {
-                'threshold': 35,
+                'threshold': 0.2777777778,
                 'fingers': ['thumb', 'index'] 
             },
             'right_click': {
-                'threshold': 35, 
+                'threshold': 0.1944444444, 
                 'fingers': ['thumb', 'middle']
             },
             'move': {
-                'threshold': 35,
-                'fingers': ['index', 'middle']
+                'threshold': 0.1944444444,
+                'fingers': ['index', 'middle', 'avg_middle']
             }
         }
         
         # Debug/visualization settings
         self.draw_debug = True
-        
         # Create thread pool for parallel gesture detection
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(self.config))
         
@@ -36,7 +37,7 @@ class GestureDetector:
         # Last detected gestures cache
         self.last_gestures = {}
         
-    def detect_gestures(self, finger_positions):
+    def detect_gestures(self, finger_positions, palm_size):
         """Detect gestures based on finger positions.
         
         Args:
@@ -53,9 +54,9 @@ class GestureDetector:
         
         # Create futures for all gesture detections to run in parallel
         futures = []
-        futures.append(self.executor.submit(self.left_click, finger_positions))
-        futures.append(self.executor.submit(self.right_click, finger_positions))
-        futures.append(self.executor.submit(self.move_gesture, finger_positions))
+        futures.append(self.executor.submit(self.left_click, finger_positions, palm_size))
+        futures.append(self.executor.submit(self.right_click, finger_positions, palm_size))
+        futures.append(self.executor.submit(self.move_gesture, finger_positions, palm_size))
         
         # Collect results from completed futures
         gestures = {}
@@ -76,7 +77,7 @@ class GestureDetector:
             
         return gestures
         
-    def left_click(self, finger_positions):
+    def left_click(self, finger_positions, palm_size):
         """Detect left_click gesture (thumb and index finger close).
         
         Args:
@@ -101,14 +102,15 @@ class GestureDetector:
             distance = np.sqrt((thumb_pos[0] - index_pos[0])**2 + 
                               (thumb_pos[1] - index_pos[1])**2)
             
+            true_threshold = threshold * palm_size
             # Calculate confidence (1.0 when distance is 0, 0.0 when distance is >= threshold)
-            if distance < threshold:
-                confidence = 1.0 - (distance / threshold)
+            if distance < (true_threshold):
+                confidence = 1.0 - (distance / true_threshold)
                 result['left_click'] = confidence
                 
         return result
     
-    def right_click(self, finger_positions):
+    def right_click(self, finger_positions, palm_size):
         """Detect right_click gesture (thumb and middle finger close).
         
         Args:
@@ -133,14 +135,15 @@ class GestureDetector:
             distance = np.sqrt((thumb_pos[0] - middle_pos[0])**2 + 
                               (thumb_pos[1] - middle_pos[1])**2)
             
+            true_threshold = threshold * palm_size
             # Calculate confidence (1.0 when distance is 0, 0.0 when distance is >= threshold)
-            if distance < threshold:
-                confidence = 1.0 - (distance / threshold)
+            if distance < (true_threshold):
+                confidence = 1.0 - (distance / true_threshold)
                 result['right_click'] = confidence
                 
         return result
     
-    def move_gesture(self, finger_positions):
+    def move_gesture(self, finger_positions, palm_size):
         """Detect move fingers gesture.
         
         Args:
@@ -160,14 +163,18 @@ class GestureDetector:
         if all(finger in finger_positions for finger in fingers):
             # Calculate distance between thumb and middle finger
             index_pos = finger_positions['index']
-            middle_pos = finger_positions['middle']
+            first_middle_pos = finger_positions['middle']
+            second_middle_pos = finger_positions['avg_middle']
+            
+            middle_pos = (abs((first_middle_pos[0] + second_middle_pos[0]) // 2), abs((first_middle_pos[1] + second_middle_pos[1]) // 2))
             
             distance = np.sqrt((index_pos[0] - middle_pos[0])**2 + 
                               (index_pos[1] - middle_pos[1])**2)
             
+            true_threshold = threshold * palm_size
             # Calculate confidence (1.0 when distance is 0, 0.0 when distance is >= threshold)
-            if distance < threshold:
-                confidence = 1.0 - (distance / threshold)
+            if distance < (true_threshold):
+                confidence = 1.0 - (distance / true_threshold)
                 result['move'] = confidence        
                 
         return result
