@@ -106,8 +106,11 @@ class HandTracker:
         fingertip_ids = {
             'thumb': 4,
             'index': 8,
+            'avg_index': 7,
+            'bottom_index': 6,
             'middle': 12,
             'avg_middle': 11,
+            'bottom_middle': 10,
             'ring': 16,
             'pinky': 20
         }
@@ -136,13 +139,14 @@ class HandTracker:
             'thumb': (255, 0, 0),    # Blue
             'index': (0, 255, 0),    # Green
             'middle': (0, 0, 255),   # Red
-            'avg_middle': (125, 0, 255),   # Red
             'ring': (255, 0, 255),   # Magenta
             'pinky': (0, 255, 255)   # Yellow
         }
         
         # Draw circles at fingertip positions
         for finger_name, position in fingertips.items():
+            if finger_name not in colors:
+                continue
             # Draw filled circle
             cv2.circle(frame, position, 8, colors[finger_name], -1)
             # Draw circle outline

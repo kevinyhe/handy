@@ -91,7 +91,10 @@ class PointerTracker:
             'thumb': Pointer('thumb'),
             'index': Pointer('index'),
             'middle': Pointer('middle'),
+            'avg_index': Pointer('avg_index'),
+            'bottom_index': Pointer('bottom_index'),
             'avg_middle': Pointer('avg_middle'),
+            'bottom_middle': Pointer('bottom_middle'),
             'ring': Pointer('ring'),
             'pinky': Pointer('pinky')
         }
@@ -126,14 +129,8 @@ class PointerTracker:
         if finger_name in self.fingers:
             self.primary_pointer = finger_name
     
-    def get_primary_pointer_position(self):
-        """Get the position of the primary pointer.
-        
-        Returns:
-            tuple: (x, y) position of the primary pointer
-        """
-        return self.fingers[self.primary_pointer].get_smoothed_position()
-    
+    # In the PointerTracker class, make sure these methods are properly implemented:
+
     def is_pointer_active(self):
         """Check if the pointer is currently active.
         
@@ -141,7 +138,25 @@ class PointerTracker:
             bool: True if pointer is active
         """
         return self.pointer_active
-    
+
+    def get_primary_pointer_position(self):
+        """Get the position of the primary pointer.
+        
+        Returns:
+            tuple: (x, y) position of the primary pointer
+        """
+        if self.primary_pointer in self.fingers:
+            return self.fingers[self.primary_pointer].get_smoothed_position()
+        return None
+
+    def set_dimensions(self, dimensions):
+        """Set frame dimensions for coordinate mapping.
+        
+        Args:
+            dimensions (tuple): Frame dimensions (width, height)
+        """
+        self.frame_dimensions = dimensions
+        
     def set_pointer_active(self, active):
         """Set whether the pointer is active.
         
@@ -149,6 +164,7 @@ class PointerTracker:
             active (bool): Whether the pointer should be active
         """
         self.pointer_active = active
+        print(f"Pointer active: {active}")  # Debug line
     
     def map_to_screen_coordinates(self, position, region=None):
         """Map a position from frame coordinates to screen coordinates.
@@ -186,15 +202,3 @@ class PointerTracker:
             y_mapped = y / frame_height * screen_height
             
             return (int(x_mapped), int(y_mapped))
-    
-    def set_dimensions(self, frame_dimensions, screen_dimensions=None):
-        """Set the dimensions for coordinate mapping.
-        
-        Args:
-            frame_dimensions (tuple): (width, height) of camera frame
-            screen_dimensions (tuple, optional): (width, height) of screen.
-                                               If None, don't change current value.
-        """
-        self.frame_dimensions = frame_dimensions
-        if screen_dimensions:
-            self.screen_dimensions = screen_dimensions

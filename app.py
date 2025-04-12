@@ -13,6 +13,8 @@ from src.vision.camera import CameraManager
 from src.tracking.hand_tracker import HandTracker
 from src.tracking.pointer import PointerTracker
 from src.tracking.gestures import GestureDetector
+from src.control.mouse_controller import MouseController
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -27,6 +29,9 @@ class MainWindow(QMainWindow):
         
         #Initialize gesture detector
         self.gesture_detector = GestureDetector()
+        
+        # Initialize mouse controller
+        self.mouse_controller = MouseController()
 
         # Set up UI
         self.setup_ui()
@@ -157,6 +162,17 @@ class MainWindow(QMainWindow):
                     # Detect gestures with dedicated detector
                     gestures = self.gesture_detector.detect_gestures(fingertips, palm_size)
                     
+                    # Set pointer active if 'move' gesture is detected
+                    if 'move' in gestures:
+                        self.finger_tracker.set_pointer_active(True)
+                        print("Setting pointer active because move gesture detected")
+                    else:
+                        # Keep pointer active if some other gesture is detected
+                        # Optionally, you can set it to False here if you want to disable 
+                        # the pointer when 'move' is not detected
+                        # self.finger_tracker.set_pointer_active(False)
+                        pass
+                    
                     # Add gesture visualization to frame
                     processed_frame = self.gesture_detector.draw_gesture_feedback(
                         processed_frame, fingertips, gestures)
@@ -165,6 +181,7 @@ class MainWindow(QMainWindow):
                     self.current_gestures = gestures
                 else:
                     self.current_gestures = {}
+                    self.finger_tracker.set_pointer_active(False)  # No hand detected, disable pointer
                 
                 # Put processed frame in output queue, replacing any existing frame
                 if not self.processed_frame_queue.empty():
@@ -244,6 +261,17 @@ class MainWindow(QMainWindow):
                     self.status_label.setText("Status: Hand detected")
                 else:
                     self.status_label.setText("Status: No hand detected")
+                    
+            # At the end of update_frame method in app.py, add:
+            if hasattr(self, 'current_gestures'):
+                print(f"Current gestures: {self.current_gestures}")
+                if hasattr(self, 'mouse_controller') and self.finger_tracker.is_pointer_active():
+                    print("Updating mouse position")
+                    pointer_pos = self.finger_tracker.get_primary_pointer_position()
+                    print(f"Current pointer position: {pointer_pos}")
+                    self.mouse_controller.update_mouse(self.finger_tracker, self.current_gestures)
+                else:
+                    print(f"Pointer active: {self.finger_tracker.is_pointer_active()}")
         
     def closeEvent(self, event):
         """Clean up resources when closing the application."""

@@ -13,16 +13,16 @@ class GestureDetector:
         # Gesture configuration parameters
         self.config = {
             'left_click': {
-                'threshold': 0.2777777778,
+                'threshold': 0.2244444444,
                 'fingers': ['thumb', 'index'] 
             },
             'right_click': {
-                'threshold': 0.1944444444, 
+                'threshold': 0.2244444444, 
                 'fingers': ['thumb', 'middle']
             },
             'move': {
-                'threshold': 0.1944444444,
-                'fingers': ['index', 'middle', 'avg_middle']
+                'threshold': 0.2877777778,
+                'fingers': ['index', 'middle', 'avg_middle', 'bottom_middle', 'avg_index', 'bottom_index']
             }
         }
         
@@ -74,6 +74,7 @@ class GestureDetector:
         # Update last gestures cache
         with self.lock:
             self.last_gestures = gestures
+    
             
         return gestures
         
@@ -162,14 +163,46 @@ class GestureDetector:
         ## Check if index and middle finger are touching
         if all(finger in finger_positions for finger in fingers):
             # Calculate distance between thumb and middle finger
-            index_pos = finger_positions['index']
+            first_index_pos = finger_positions['index']
+            second_index_pos = finger_positions['avg_index']
+            third_index_pos = finger_positions['bottom_index']
+            
             first_middle_pos = finger_positions['middle']
             second_middle_pos = finger_positions['avg_middle']
+            third_middle_pos = finger_positions['bottom_middle']
+
+            # Prevent division by zero in slope calculations
+            # Top index finger segment
+            dx_top_index = first_index_pos[0] - second_index_pos[0]
+            dy_top_index = first_index_pos[1] - second_index_pos[1]
+            top_index_slope = np.arctan2(abs(dy_top_index), abs(dx_top_index)) if abs(dx_top_index) > 0.001 else np.pi/2
             
-            middle_pos = (abs((first_middle_pos[0] + second_middle_pos[0]) // 2), abs((first_middle_pos[1] + second_middle_pos[1]) // 2))
+            # Bottom index finger segment
+            dx_bot_index = third_index_pos[0] - second_index_pos[0]
+            dy_bot_index = third_index_pos[1] - second_index_pos[1]
+            bot_index_slope = np.arctan2(abs(dy_bot_index), abs(dx_bot_index)) if abs(dx_bot_index) > 0.001 else np.pi/2
             
-            distance = np.sqrt((index_pos[0] - middle_pos[0])**2 + 
-                              (index_pos[1] - middle_pos[1])**2)
+            # Top middle finger segment
+            dx_top_middle = first_middle_pos[0] - second_middle_pos[0]
+            dy_top_middle = first_middle_pos[1] - second_middle_pos[1]
+            top_middle_slope = np.arctan2(abs(dy_top_middle), abs(dx_top_middle)) if abs(dx_top_middle) > 0.001 else np.pi/2
+            
+            # Bottom middle finger segment
+            dx_bot_middle = third_middle_pos[0] - second_middle_pos[0]
+            dy_bot_middle = third_middle_pos[1] - second_middle_pos[1]
+            bot_middle_slope = np.arctan2(abs(dy_bot_middle), abs(dx_bot_middle)) if abs(dx_bot_middle) > 0.001 else np.pi/2
+            
+            # Check if fingers are roughly parallel
+            if abs(top_index_slope - top_middle_slope) > 0.25 or abs(bot_index_slope - bot_middle_slope) > 0.25:
+                # print("move fingers slope too much lol")
+                return result
+            
+            # Integer division for OpenCV coordinates
+            middle_pos = (int((first_middle_pos[0] + second_middle_pos[0]) / 2), 
+                        int((first_middle_pos[1] + second_middle_pos[1]) / 2))
+            
+            distance = np.sqrt((first_index_pos[0] - middle_pos[0])**2 + 
+                            (first_index_pos[1] - middle_pos[1])**2)
             
             true_threshold = threshold * palm_size
             # Calculate confidence (1.0 when distance is 0, 0.0 when distance is >= threshold)
@@ -197,7 +230,7 @@ class GestureDetector:
         feedback_frame = frame.copy()
             
         # Draw left click visualization
-        if 'left_click' in gestures and gestures['left_click'] > 0.3:
+        if 'left_click' in gestures and gestures['left_click'] > 0:
             thumb_pos = finger_positions['thumb']
             index_pos = finger_positions['index']
             
@@ -216,7 +249,7 @@ class GestureDetector:
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
             
         # Draw right click visualization
-        if 'right_click' in gestures and gestures['right_click'] > 0.3:
+        if 'right_click' in gestures and gestures['right_click'] > 0:
             thumb_pos = finger_positions['thumb']
             middle_pos = finger_positions['middle']
             
@@ -235,7 +268,7 @@ class GestureDetector:
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
         
         # Draw three fingers visualization
-        if 'move' in gestures and gestures['move'] > 0.3:
+        if 'move' in gestures and gestures['move'] > 0:
             index_pos = finger_positions['index']
             middle_pos = finger_positions['middle']
             
