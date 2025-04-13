@@ -7,8 +7,8 @@ Budget JARVIS, for a wannabe Iron Man.
 Below are the steps to get the program set up
 
 ```shell
-git clone https://github.com/kevinyhe/ai-hacks
-cd ai-hacks
+git clone https://github.com/kevinyhe/handy
+cd handy
 py -m venv venv
 venv\scripts\activate.bat
 py -3 -m pip install -r requirements.txt
