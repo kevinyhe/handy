@@ -91,38 +91,71 @@ class HandTracker:
         cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
     
     def get_fingertips(self, hand_landmarks, frame_shape):
-        """Get positions of all fingertips.
+        """Get positions of all fingertips and key hand landmarks.
         
         Args:
             hand_landmarks: MediaPipe hand landmarks
             frame_shape: Shape of the frame (height, width)
             
         Returns:
-            dict: Dictionary of fingertip positions with finger names as keys
+            dict: Dictionary of finger positions with finger names as keys
         """
         h, w = frame_shape[:2]
         
-        # Fingertip landmark indices
-        fingertip_ids = {
+        # Landmark indices for all important points
+        landmark_ids = {
+            # Fingertips
             'thumb': 4,
             'index': 8,
-            'avg_index': 7,
-            'bottom_index': 6,
             'middle': 12,
-            'avg_middle': 11,
-            'bottom_middle': 10,
             'ring': 16,
-            'pinky': 20
+            'pinky': 20,
+            
+            # Intermediate joints (DIP = Distal Interphalangeal)
+            'dip_thumb': 3,
+            'dip_index': 7,
+            'dip_middle': 11,
+            'dip_ring': 15,
+            'dip_pinky': 19,
+            
+            # Middle joints (PIP = Proximal Interphalangeal)
+            'pip_thumb': 2,
+            'pip_index': 6,
+            'pip_middle': 10,
+            'pip_ring': 14,
+            'pip_pinky': 18,
+            
+            # Knuckles (MCP = Metacarpophalangeal)
+            'mcp_thumb': 1,
+            'mcp_index': 5,
+            'mcp_middle': 9,
+            'mcp_ring': 13,
+            'mcp_pinky': 17,
+            
+            # Hand reference points
+            'wrist': 0,
+            'palm_center': 9,  # Middle finger MCP joint (good palm center reference)
+            
+            # Additional references used in gestures.py
+            'avg_index': 6,    # Alternative name for pip_index for compatibility
+            'avg_middle': 10,  # Alternative name for pip_middle for compatibility
+            'avg_ring': 14,    # Alternative name for pip_ring for compatibility
+            'avg_pinky': 18,   # Alternative name for pip_pinky for compatibility
+            
+            'bottom_index': 5, # Alternative name for mcp_index for compatibility
+            'bottom_middle': 9, # Alternative name for mcp_middle for compatibility
+            'bottom_ring': 13, # Alternative name for mcp_ring for compatibility
+            'bottom_pinky': 17, # Alternative name for mcp_pinky for compatibility
         }
         
-        fingertips = {}
-        for finger_name, landmark_id in fingertip_ids.items():
+        finger_positions = {}
+        for point_name, landmark_id in landmark_ids.items():
             landmark = hand_landmarks.landmark[landmark_id]
             # Convert normalized coordinates to pixel coordinates
             x, y = int(landmark.x * w), int(landmark.y * h)
-            fingertips[finger_name] = (x, y)
-            
-        return fingertips
+            finger_positions[point_name] = (x, y)
+        
+        return finger_positions
 
     def draw_fingertips(self, frame, fingertips):
         """Draw colored circles at fingertip positions.

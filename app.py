@@ -8,31 +8,53 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSlot
 
 import threading
 from queue import Queue, Empty
+import os
 
 from src.vision.camera import CameraManager
 from src.tracking.hand_tracker import HandTracker
 from src.tracking.pointer import PointerTracker
 from src.tracking.gestures import GestureDetector
 from src.control.mouse_controller import MouseController
-
+from src.settings.settings import Settings
+from src.settings.menu import SettingsMenu 
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        super().__init__()
+        QMainWindow.__init__(self)
+        
+        # Initialize settings
+        self.settings = Settings()
         
         # Initialize camera and hand tracker
         self.camera_manager = CameraManager()
-        self.hand_tracker = HandTracker()
+        self.hand_tracker = HandTracker(
+            min_detection_confidence=self.settings.get('hand_detection_confidence'),
+            min_tracking_confidence=self.settings.get('hand_tracking_confidence')
+        )
         
         # Initialize finger pointer tracker
         self.finger_tracker = PointerTracker()
         
-        #Initialize gesture detector
+        # Initialize gesture detector
         self.gesture_detector = GestureDetector()
         
-        # Initialize mouse controller
-        self.mouse_controller = MouseController()
-
+        # Apply initial settings to gesture detector
+        self.gesture_detector.config['left_click']['threshold'] = self.settings.get('left_click_threshold')
+        self.gesture_detector.config['right_click']['threshold'] = self.settings.get('right_click_threshold')
+        self.gesture_detector.config['move']['threshold'] = self.settings.get('move_threshold')
+        self.gesture_detector.config['drag']['threshold'] = self.settings.get('drag_threshold')
+        self.gesture_detector.config['scroll']['threshold'] = self.settings.get('scroll_threshold')
+        
+        # Initialize mouse controller with settings
+        self.mouse_controller = MouseController(
+            sensitivity=self.settings.get('mouse_sensitivity'),
+            smoothing=self.settings.get('mouse_smoothing')
+        )
+        self.mouse_controller.dead_zone = self.settings.get('dead_zone')
+        
+        # Initialize settings menu
+        self.settings_menu = SettingsMenu(self.settings)
+        
         # Set up UI
         self.setup_ui()
         
@@ -99,6 +121,48 @@ class MainWindow(QMainWindow):
         
         main_layout.addLayout(controls_layout)
         
+        self.settings_button = QPushButton("Settings")
+        self.settings_button.clicked.connect(self.open_settings)
+        controls_layout.addWidget(self.settings_button)
+        
+        main_layout.addLayout(controls_layout)
+        
+    def open_settings(self):
+        """Open the settings menu dialog."""
+        # Create settings menu dialog
+        settings_dialog = self.settings_menu
+        
+        # Connect the settings_changed signal to update components
+        settings_dialog.settings_changed.connect(self.apply_settings)
+        
+        # Show the dialog
+        settings_dialog.exec_()
+
+    def apply_settings(self):
+        """Apply current settings to all components."""
+        # Update hand tracker
+        self.hand_tracker.min_detection_confidence = self.settings.get("hand_detection_confidence")
+        self.hand_tracker.min_tracking_confidence = self.settings.get("hand_tracking_confidence")
+        
+        # Update gesture detector thresholds
+        self.gesture_detector.config['left_click']['threshold'] = self.settings.get('left_click_threshold')
+        self.gesture_detector.config['right_click']['threshold'] = self.settings.get('right_click_threshold')
+        self.gesture_detector.config['move']['threshold'] = self.settings.get('move_threshold')
+        self.gesture_detector.config['drag']['threshold'] = self.settings.get('drag_threshold')
+        
+        # Update scroll settings
+        self.gesture_detector.config['scroll']['threshold'] = self.settings.get('scroll_threshold')
+        self.gesture_detector.config['scroll']['base_speed'] = self.settings.get('scroll_base_speed')
+        self.gesture_detector.config['scroll']['max_speed'] = self.settings.get('scroll_max_speed')
+        self.gesture_detector.config['scroll']['straightness_factor'] = self.settings.get('scroll_straightness_factor')
+        
+        # Update mouse controller
+        self.mouse_controller.sensitivity = self.settings.get('mouse_sensitivity')
+        self.mouse_controller.smoothing = self.settings.get('mouse_smoothing')
+        self.mouse_controller.dead_zone = self.settings.get('dead_zone')
+    
+    print("Settings applied")
+            
     def change_camera(self, index):
         """Change the active camera."""
         if self.timer.isActive():
@@ -119,6 +183,10 @@ class MainWindow(QMainWindow):
             self.camera_manager.release()
             self.start_stop_button.setText("Start")
         else:
+            # Update status
+            self.status_label.setText("Starting, please wait...")
+            QApplication.processEvents()  # Force UI update
+            
             # Start camera
             camera_id = self.camera_combo.currentData()
             if camera_id >= 0:
@@ -130,13 +198,14 @@ class MainWindow(QMainWindow):
                     self.processing_thread.daemon = True
                     self.processing_thread.start()
                     
-                    # Use higher frame rate (60fps instead of 33fps)
-                    self.timer.start(16)  # Update every 16ms (~60 fps)
+                    # Start the timer
+                    self.timer.start(30)  # ~33 FPS
                     self.start_stop_button.setText("Stop")
+                    self.status_label.setText("Camera active")
                 else:
-                    print("Failed to initialize camera")
+                    self.status_label.setText("Failed to initialize camera")
             else:
-                print("No camera selected")
+                self.status_label.setText("No camera selected")
     
     def process_frames(self):
         """Process frames in a separate thread."""
@@ -158,20 +227,19 @@ class MainWindow(QMainWindow):
                     
                     # print palm size
                     print(f"Palm size: {palm_size:.2f} pixels")
-                    
+
                     # Detect gestures with dedicated detector
                     gestures = self.gesture_detector.detect_gestures(fingertips, palm_size)
-                    
-                    # Set pointer active if 'move' gesture is detected
-                    if 'move' in gestures:
+
+                    # Update mouse with gestures and palm size
+                    self.mouse_controller.update_mouse(self.finger_tracker, gestures, palm_size)
+
+                    # Set pointer active if 'move' gesture or drag is detected
+                    if 'move' in gestures or ('drag' in gestures and 
+                                            ('left_click' in gestures or 'right_click' in gestures)):
                         self.finger_tracker.set_pointer_active(True)
-                        print("Setting pointer active because move gesture detected")
                     else:
-                        # Keep pointer active if some other gesture is detected
-                        # Optionally, you can set it to False here if you want to disable 
-                        # the pointer when 'move' is not detected
-                        # self.finger_tracker.set_pointer_active(False)
-                        pass
+                        self.finger_tracker.set_pointer_active(False)
                     
                     # Add gesture visualization to frame
                     processed_frame = self.gesture_detector.draw_gesture_feedback(
@@ -261,17 +329,6 @@ class MainWindow(QMainWindow):
                     self.status_label.setText("Status: Hand detected")
                 else:
                     self.status_label.setText("Status: No hand detected")
-                    
-            # At the end of update_frame method in app.py, add:
-            if hasattr(self, 'current_gestures'):
-                print(f"Current gestures: {self.current_gestures}")
-                if hasattr(self, 'mouse_controller') and self.finger_tracker.is_pointer_active():
-                    print("Updating mouse position")
-                    pointer_pos = self.finger_tracker.get_primary_pointer_position()
-                    print(f"Current pointer position: {pointer_pos}")
-                    self.mouse_controller.update_mouse(self.finger_tracker, self.current_gestures)
-                else:
-                    print(f"Pointer active: {self.finger_tracker.is_pointer_active()}")
         
     def closeEvent(self, event):
         """Clean up resources when closing the application."""

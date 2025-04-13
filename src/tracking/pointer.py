@@ -91,10 +91,6 @@ class PointerTracker:
             'thumb': Pointer('thumb'),
             'index': Pointer('index'),
             'middle': Pointer('middle'),
-            'avg_index': Pointer('avg_index'),
-            'bottom_index': Pointer('bottom_index'),
-            'avg_middle': Pointer('avg_middle'),
-            'bottom_middle': Pointer('bottom_middle'),
             'ring': Pointer('ring'),
             'pinky': Pointer('pinky')
         }

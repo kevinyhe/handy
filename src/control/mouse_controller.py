@@ -5,7 +5,7 @@ import numpy as np
 class MouseController:
     """Controls the mouse based on detected gestures with relative movement."""
     
-    def __init__(self, screen_dimensions=(2560, 1440), smoothing=0.2, sensitivity=4.0):
+    def __init__(self, screen_dimensions=(2560, 1440), smoothing=0.4, sensitivity=6.0):
         """Initialize the mouse controller.
         
         Args:
@@ -30,32 +30,21 @@ class MouseController:
         self.left_button_down = False
         self.right_button_down = False
         self.last_click_time = 0
-        self.click_cooldown = 0.3  # Seconds between allowed clicks
+        self.click_cooldown = 0.05  # Seconds between allowed clicks
         self.inactivity_time = 0   # Time since last movement
         self.inactivity_threshold = 1.0  # Seconds of inactivity before resetting tracking
         self.last_cursor_position = None  # Store last known cursor position
         
         print(f"MouseController initialized with screen size: {self.screen_width}x{self.screen_height}")
-        
-    def update_mouse(self, finger_tracker, gestures):
+            
+    def update_mouse(self, finger_tracker, gestures, palm_size=None):
         """Update mouse position and actions based on gestures with relative movement.
         
         Args:
-            finger_tracker (PointerTracker): The finger pointer tracker
+            finger_tracker (PointerTracker): The finger tracker
             gestures (dict): Detected gestures with confidence scores
+            palm_size (float, optional): Size of the palm for scaling sensitivity
         """
-        # Only process if pointer is active
-        if not finger_tracker.is_pointer_active():
-            # Save cursor position before resetting tracking
-            if self.is_moving:
-                self.last_cursor_position = pyautogui.position()
-                self.is_moving = False
-                print(f"Saved cursor position: {self.last_cursor_position}")
-            
-            # Reset position history when pointer becomes inactive to prevent teleportation
-            self.last_raw_position = None
-            return
-        
         # Get pointer position
         pointer_pos = finger_tracker.get_primary_pointer_position()
         if pointer_pos is None:
@@ -63,92 +52,106 @@ class MouseController:
         
         # Get raw position
         raw_x, raw_y = pointer_pos
+        current_time = time.time()
         
-        # Prevent teleportation on first detection or after inactivity
+        # Check if move gesture is active
+        move_active = 'move' in gestures
+        
+        # Check if drag is active (ring and pinky clenched) during a click
+        drag_active = ('drag' in gestures and 
+                    (self.left_button_down or self.right_button_down or 
+                    'left_click' in gestures or 'right_click' in gestures))
+        
+        # Should move if either regular move is active or drag is active
+        should_move = move_active or drag_active
+        
+        # Debug the gestures dict to see what's going on
+        print(f"Gestures: {gestures}, Should move: {should_move}")
+        
+        # Scale sensitivity based on palm size if provided
+        effective_sensitivity = self.sensitivity
+        if palm_size is not None and palm_size > 0:
+            # Base calibration value - adjust this based on your typical tracking distance
+            base_palm_size = 110  # This should be the palm size at your "normal" distance
+            
+            # Calculate scaling factor based on palm size
+            # Smaller palm size (hand further away) = higher sensitivity
+            # Larger palm size (hand closer) = lower sensitivity
+            scaling_factor = base_palm_size / palm_size
+            
+            # Apply bounds to prevent extreme sensitivity values
+            scaling_factor = max(0.5, min(scaling_factor, 2.0))
+            
+            # Apply scaling to sensitivity
+            effective_sensitivity = self.sensitivity * scaling_factor
+            
+            print(f"Palm size: {palm_size}, Scaling: {scaling_factor:.2f}, Effective sensitivity: {effective_sensitivity:.2f}")
+        
+        # Initialize tracking if this is the first detection
         if self.last_raw_position is None:
-            # Initialize tracking from current hand position without moving the cursor
             self.last_raw_position = (raw_x, raw_y)
-            
-            # Initialize position history to prevent jumps
-            if not hasattr(self, 'position_history') or self.position_history is None:
-                self.position_history = [(raw_x, raw_y)] * 5
-            
-            print("Initializing position tracking")
-            
-            # Reset movement flags
             self.last_delta = (0, 0)
-            
-            # Track activation time
-            self.last_active_time = time.time()
+            self.position_history = [(raw_x, raw_y)] * 5
+            print("Initialized tracking")
             return
         
-        # Process movement if 'move' gesture is active
-        if 'move' in gestures:
-            # Reset inactivity timer
-            self.last_active_time = time.time()
-            
-            # Add current position to history
-            self.position_history.append((raw_x, raw_y))
-            if len(self.position_history) > 5:  # Keep last 5 positions
-                self.position_history.pop(0)
-            
-            # Calculate smoothed delta using weighted average
-            weights = [0.1, 0.15, 0.2, 0.25, 0.3]  # More weight to recent positions
-            smooth_x = sum(pos[0] * w for pos, w in zip(self.position_history, weights))
-            smooth_y = sum(pos[1] * w for pos, w in zip(self.position_history, weights))
-            
-            # Calculate movement based on smoothed position - RELATIVE MOVEMENT ONLY
-            delta_x = (smooth_x - self.last_raw_position[0]) * self.sensitivity
-            delta_y = (smooth_y - self.last_raw_position[1]) * self.sensitivity
-            
-            # Invert the movement direction to fix inverted controls
-            delta_x = -delta_x  # Invert horizontal movement
-            delta_y = -delta_y  # Invert vertical movement
-            
-            # Apply dead zone to reduce jitter
-            dead_zone = 0.8
-            if abs(delta_x) < dead_zone:
-                delta_x = 0
-            else:
-                # Apply non-linear response for better control
-                delta_x = (abs(delta_x) - dead_zone) * (delta_x / abs(delta_x))
-                
-            if abs(delta_y) < dead_zone:
-                delta_y = 0
-            else:
-                delta_y = (abs(delta_y) - dead_zone) * (delta_y / abs(delta_y))
-                    
-            # Move mouse by the delta amount
-            if abs(delta_x) > 0 or abs(delta_y) > 0:
-                # Apply additional smoothing to the actual movement
-                if hasattr(self, 'last_delta'):
-                    # Blend previous and current delta for smoother transitions
-                    smooth_delta_x = delta_x * 0.7 + self.last_delta[0] * 0.3
-                    smooth_delta_y = delta_y * 0.7 + self.last_delta[1] * 0.3
-                else:
-                    smooth_delta_x, smooth_delta_y = delta_x, delta_y
-                
-                # Store current delta for next frame
-                self.last_delta = (delta_x, delta_y)
-                
-                # moveRel moves relative to current position - ALWAYS USE RELATIVE MOVEMENT
-                pyautogui.moveRel(smooth_delta_x, smooth_delta_y, duration=0)
-                self.is_moving = True
-            else:
-                self.is_moving = False
-        else:
-            # When not moving, save the current cursor position
-            if self.is_moving:
-                self.last_cursor_position = pyautogui.position()
-                self.is_moving = False
-                print(f"Saved cursor position: {self.last_cursor_position}")
+        # Add to position history for smoothing
+        self.position_history.append((raw_x, raw_y))
+        if len(self.position_history) > 5:
+            self.position_history.pop(0)
         
-        # Update last position with raw (not smoothed) position
+        # Calculate movement delta (how much the hand has moved)
+        delta_x = (raw_x - self.last_raw_position[0]) * -effective_sensitivity
+        delta_y = (raw_y - self.last_raw_position[1]) * -effective_sensitivity
+        
+        # Debug print to see what's happening
+        print(f"Delta: ({delta_x:.2f}, {delta_y:.2f}), Move active: {should_move}")
+        
+        # Apply dead zone 
+        dead_zone = 0.8
+        if abs(delta_x) < dead_zone:
+            delta_x = 0
+        else:
+            delta_x = (abs(delta_x) - dead_zone) * (delta_x / abs(delta_x))
+        
+        if abs(delta_y) < dead_zone:
+            delta_y = 0
+        else:
+            delta_y = (abs(delta_y) - dead_zone) * (delta_y / abs(delta_y))
+        
+        # Move if should_move is true AND we have delta values
+        if should_move and (abs(delta_x) > 0 or abs(delta_y) > 0):
+            # Invert movement direction (camera is mirrored)
+            delta_x = -delta_x
+            delta_y = -delta_y
+            
+            # Apply smoothing
+            if hasattr(self, 'last_delta'):
+                smooth_delta_x = delta_x * 0.7 + self.last_delta[0] * 0.3
+                smooth_delta_y = delta_y * 0.7 + self.last_delta[1] * 0.3
+            else:
+                smooth_delta_x, smooth_delta_y = delta_x, delta_y
+            
+            # Store for next frame
+            self.last_delta = (delta_x, delta_y)
+            
+            # Actually move the mouse - use larger values to ensure movement is visible
+            movement_x = smooth_delta_x * 1.5
+            movement_y = smooth_delta_y * 1.5
+            
+            print(f"Moving mouse: ({movement_x:.2f}, {movement_y:.2f})")
+            pyautogui.moveRel(movement_x, movement_y, duration=0)
+            self.is_moving = True
+            self.last_active_time = current_time
+        else:
+            if self.is_moving and not should_move:
+                self.is_moving = False
+                print("Move/drag gesture ended")
+        
+        # Update last position for next frame's delta calculation
         self.last_raw_position = (raw_x, raw_y)
 
-                
         # Handle mouse button actions
-        current_time = time.time()
         if current_time - self.last_click_time > self.click_cooldown:
             # Left click - press and hold
             if 'left_click' in gestures:
@@ -173,3 +176,17 @@ class MouseController:
                 pyautogui.mouseUp(button='right')
                 self.right_button_down = False
                 print("Right mouse button up")
+                
+        if 'scroll' in gestures:  # Threshold for activation
+            if 'scroll_direction' in gestures:
+                direction = gestures['scroll_direction']
+                
+                # Scale the scroll amount based on the direction value
+                # Adjust the multiplier to control scroll sensitivity
+                scroll_amount = int(direction * 3)  # Adjust multiplier as needed
+                
+                # Apply minimum threshold to avoid tiny scrolls
+                if abs(scroll_amount) > 0.5:
+                    # Scroll (positive = down, negative = up)
+                    pyautogui.scroll(-scroll_amount)  # Invert for natural scrolling
+                    print(f"Scrolling: {scroll_amount}")
