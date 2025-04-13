@@ -125,8 +125,6 @@ class PointerTracker:
         if finger_name in self.fingers:
             self.primary_pointer = finger_name
     
-    # In the PointerTracker class, make sure these methods are properly implemented:
-
     def is_pointer_active(self):
         """Check if the pointer is currently active.
         

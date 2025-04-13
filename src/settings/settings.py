@@ -23,9 +23,10 @@ class Settings:
             "scroll_threshold": 0.2477777778,
             
             # Scroll settings
-            "scroll_base_speed": 10.0,
-            "scroll_max_speed": 30.0,
-            "scroll_straightness_factor": 2.0,
+            "scroll_base_speed": 20.0,
+            "scroll_max_speed": 80.0,
+            "scroll_straightness_factor": 3.3,
+            "invert_scroll": True,
             
             # Mouse control
             "mouse_sensitivity": 6.0,

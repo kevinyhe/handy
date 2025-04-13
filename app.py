@@ -137,7 +137,7 @@ class MainWindow(QMainWindow):
         
         # Show the dialog
         settings_dialog.exec_()
-
+        
     def apply_settings(self):
         """Apply current settings to all components."""
         # Update hand tracker
@@ -160,8 +160,8 @@ class MainWindow(QMainWindow):
         self.mouse_controller.sensitivity = self.settings.get('mouse_sensitivity')
         self.mouse_controller.smoothing = self.settings.get('mouse_smoothing')
         self.mouse_controller.dead_zone = self.settings.get('dead_zone')
-    
-    print("Settings applied")
+        
+        print("Settings applied successfully!")    
             
     def change_camera(self, index):
         """Change the active camera."""
@@ -232,7 +232,7 @@ class MainWindow(QMainWindow):
                     gestures = self.gesture_detector.detect_gestures(fingertips, palm_size)
 
                     # Update mouse with gestures and palm size
-                    self.mouse_controller.update_mouse(self.finger_tracker, gestures, palm_size)
+                    self.mouse_controller.update_mouse(self.finger_tracker, gestures, palm_size, self.settings)
 
                     # Set pointer active if 'move' gesture or drag is detected
                     if 'move' in gestures or ('drag' in gestures and 

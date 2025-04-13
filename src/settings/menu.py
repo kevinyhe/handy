@@ -103,13 +103,13 @@ class SettingsMenu(QDialog):
         
         # Left click threshold
         self.add_slider(click_layout, "Left Click Threshold", 
-                       "left_click_threshold", 0.1, 0.5, 0.01, 
-                       "Smaller values make left click more sensitive")
+                    "left_click_threshold", 0.1, 0.5, 0.01, 
+                    "Smaller values make left click more sensitive")
         
         # Right click threshold
         self.add_slider(click_layout, "Right Click Threshold", 
-                       "right_click_threshold", 0.1, 0.5, 0.01, 
-                       "Smaller values make right click more sensitive")
+                    "right_click_threshold", 0.1, 0.5, 0.01, 
+                    "Smaller values make right click more sensitive")
         
         layout.addWidget(click_group)
         
@@ -119,40 +119,46 @@ class SettingsMenu(QDialog):
         
         # Move threshold
         self.add_slider(move_layout, "Move Gesture Threshold", 
-                       "move_threshold", 0.1, 0.5, 0.01, 
-                       "Smaller values make move gesture more sensitive")
+                    "move_threshold", 0.1, 0.5, 0.01, 
+                    "Smaller values make move gesture more sensitive")
         
         # Drag threshold
         self.add_slider(move_layout, "Drag Gesture Threshold", 
-                       "drag_threshold", 0.1, 0.5, 0.01, 
-                       "Smaller values make drag gesture more sensitive")
+                    "drag_threshold", 0.1, 0.5, 0.01, 
+                    "Smaller values make drag gesture more sensitive")
         
-        # Drag curl multiplier
-        self.add_slider(move_layout, "Drag Curl Multiplier", 
-                       "drag_curl_multiplier", 1.0, 4.0, 0.1, 
-                       "Smaller values require more finger curling for drag")
+        layout.addWidget(move_group)
         
+        # Scroll gestures group
         scroll_group = QGroupBox("Scroll Gesture")
         scroll_layout = QVBoxLayout(scroll_group)
+        
+        # Scroll threshold
+        self.add_slider(scroll_layout, "Scroll Threshold", 
+                    "scroll_threshold", 0.1, 0.5, 0.01, 
+                    "Smaller values make scroll gesture more sensitive")
 
         # Scroll base speed
         self.add_slider(scroll_layout, "Scroll Base Speed", 
-                        "scroll_base_speed", 0.5, 3.0, 0.1, 
+                        "scroll_base_speed", 10.0, 80.0, 1.0, 
                         "Base speed for scrolling")
 
         # Scroll max speed
         self.add_slider(scroll_layout, "Scroll Max Speed", 
-                        "scroll_max_speed", 1.0, 6.0, 0.1, 
+                        "scroll_max_speed", 20.0, 160.0, 1.0, 
                         "Maximum speed for scrolling with straight fingers")
 
         # Scroll straightness factor
         self.add_slider(scroll_layout, "Straightness Impact", 
                         "scroll_straightness_factor", 0.5, 4.0, 0.1, 
                         "How much finger straightness affects scroll speed")
-
-        layout.addWidget(scroll_group)
         
-        layout.addWidget(move_group)
+        # Invert scroll direction checkbox
+        self.add_checkbox(scroll_layout, "Invert Scroll Direction", 
+                    "invert_scroll", 
+                    "When enabled, scrolling direction is reversed (natural scrolling)")
+        
+        layout.addWidget(scroll_group)
         
         # Add stretch to push controls to the top
         layout.addStretch()

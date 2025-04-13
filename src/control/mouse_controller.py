@@ -37,7 +37,7 @@ class MouseController:
         
         print(f"MouseController initialized with screen size: {self.screen_width}x{self.screen_height}")
             
-    def update_mouse(self, finger_tracker, gestures, palm_size=None):
+    def update_mouse(self, finger_tracker, gestures, palm_size=None, settings=None):
         """Update mouse position and actions based on gestures with relative movement.
         
         Args:
@@ -176,17 +176,20 @@ class MouseController:
                 pyautogui.mouseUp(button='right')
                 self.right_button_down = False
                 print("Right mouse button up")
-                
-        if 'scroll' in gestures:  # Threshold for activation
+            
+        # Handle scrolling
+        if 'scroll' in gestures:
             if 'scroll_direction' in gestures:
                 direction = gestures['scroll_direction']
                 
-                # Scale the scroll amount based on the direction value
-                # Adjust the multiplier to control scroll sensitivity
-                scroll_amount = int(direction * 3)  # Adjust multiplier as needed
+                # Check if we need to invert the scroll direction
+                if settings and settings.get('invert_scroll'):
+                    direction = -direction  # Invert the direction
+                
+                scroll_amount = int(direction)
                 
                 # Apply minimum threshold to avoid tiny scrolls
                 if abs(scroll_amount) > 0.5:
                     # Scroll (positive = down, negative = up)
-                    pyautogui.scroll(-scroll_amount)  # Invert for natural scrolling
-                    print(f"Scrolling: {scroll_amount}")
+                    pyautogui.scroll(scroll_amount)
+                    print(f"Scrolling: {scroll_amount} (inverted: {settings.get('invert_scroll') if settings else False})")

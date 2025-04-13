@@ -359,27 +359,27 @@ class GestureDetector:
         
         # Calculate confidence (1.0 when distance is 0, 0.0 when distance is >= threshold)
         if distance < (true_threshold):
-            confidence = 1.0 - (distance / true_threshold)
-            result['scroll'] = confidence
-            
-            # Calculate scroll speed based on finger straightness
-            # Straighter fingers = faster scrolling
-            # Apply non-linear scaling using the straightness factor
-            speed_multiplier = base_speed + (avg_straightness ** straightness_factor) * (max_speed - base_speed)
-            
-            # Determine direction based on finger orientation
-            if middle_pointing_up:
-                # Fingers pointing up = scroll up = negative direction
-                direction = -speed_multiplier
-            else:
-                # Fingers pointing down = scroll down = positive direction
-                direction = speed_multiplier
-            
-            # Add direction to result (can be accessed as gestures['scroll_direction'])
-            result['scroll_direction'] = direction
-            
-            print(f"Middle-Ring scroll detected: confidence={confidence:.2f}, direction={direction:.2f}, speed={speed_multiplier:.2f}")
-                    
+                confidence = 1.0 - (distance / true_threshold)
+                result['scroll'] = confidence
+                
+                # Calculate scroll speed based on finger straightness
+                # Straighter fingers = faster scrolling
+                # Apply non-linear scaling using the straightness factor
+                speed_multiplier = base_speed + (avg_straightness ** straightness_factor) * (max_speed - base_speed)
+                
+                # Determine direction based on finger orientation
+                if middle_pointing_up:
+                    # Fingers pointing up = scroll up = negative direction
+                    direction = -speed_multiplier
+                else:
+                    # Fingers pointing down = scroll down = positive direction
+                    direction = speed_multiplier
+                
+                # Store the direction (will be handled by mouse_controller)
+                result['scroll_direction'] = direction
+                
+                print(f"Middle-Ring scroll detected: confidence={confidence:.2f}, direction={direction:.2f}, speed={speed_multiplier:.2f}")
+                        
         return result
 
     def draw_gesture_feedback(self, frame, finger_positions, gestures):
