@@ -1,6 +1,6 @@
 # Handy
 
-Budget JARVIS, for a wannabe Iron Man.
+Budget JARVIS, for a wannabe Iron Man. Submission for AI Hackfest 2025
 
 ## Testing
 
