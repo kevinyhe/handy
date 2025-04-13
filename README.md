@@ -4,7 +4,7 @@ Budget JARVIS, for a wannabe Iron Man.
 
 ## Testing
 
-Below are the steps to get the program set up
+Below are the steps to get the program set up. Note that python 3 will be needed to run Handy.
 
 ```shell
 git clone https://github.com/kevinyhe/handy
@@ -19,9 +19,13 @@ py -3 -m pip install -r requirements.txt
 Run `py app.py` in your shell, and click start webcam. For reference here is a list of gestures:
 
 Thumb - index: Left Click
+
 Thumb - middle: Right Click
+
 Index - middle: Move
+
 Middle - ring: Scroll
+
 Thumb - index, and ring - pinky curled downwards: Drag
 
 ## Inspiration
