@@ -28,9 +28,9 @@ class GestureDetector:
             'scroll': {
                 'threshold': 0.2477777778,
                 'fingers': ['middle', 'ring', 'dip_middle', 'pip_middle', 'dip_ring', 'pip_ring', 'wrist', 'palm_center'],
-                'base_speed': 1.0,        # Base scroll speed
-                'max_speed': 3.0,         # Maximum scroll speed
-                'straightness_factor': 2.0  # How much straightness affects speed
+                'base_speed': 20.0,        # Base scroll speed
+                'max_speed': 80.0,         # Maximum scroll speed
+                'straightness_factor': 3.3  # How much straightness affects speed
             }
         }
             
